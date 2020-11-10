@@ -1,0 +1,160 @@
+TITLE MASM Template	(main.asm)
+; Description: Kaleidoscope Party! WOO!!
+;       This program displays a 24x24 square of colors, emulating a kaleidoscope of jovial goodness.
+;       The display is constantly changing one grid at a time, and the colors are symmetrical
+;       horizontally and vertically.
+; Authors: Ethan Wolcott        
+; Date:  11/09/2020         
+INCLUDE Irvine32.inc  
+
+SetColor PROTO forecolor:BYTE, backcolor: BYTE
+WriteColorChar PROTO char:BYTE, forecolor:BYTE, backcolor:BYTE
+PrintRow PROTO 
+GenerateLine PROTO
+
+
+.data
+
+colors BYTE green, blue, yellow, lightRed, magenta, cyan, black, brown, lightGray, gray, lightBlue, lightGreen, lightCyan, red, lightMagenta, white     ;array of color values
+
+line BYTE ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?   ;array of empty bytes to store color values into
+
+position1 BYTE 0                                            ;track the cursor position of the top lines
+position2 BYTE 23                                           ;track the cursor position of the bottom lines
+
+.code
+main PROC
+
+
+   
+    mov ecx, 12             ;print all lines  by looping 12 twelve times, two lines per loop
+L1:
+    INVOKE GenerateLine     ;call the procedure to randomly select colors colors and fill "line" variable in symmetrical fashion
+    
+    mov dh, position1       ;set the y position of the cursor
+    mov dl, 0               ;set the x position of the cursor
+    call GotoXY             ;move the cursor
+    
+    INVOKE PrintRow         ;call the procedure to print the "line" variable at the top of the grid
+    call Crlf               ;bring cursor to next line
+  
+    mov dh, position2       ;set the y position of the cursor
+    mov dl,0                ;set the x position of the cursor
+    call GotoXY             ;move the cursor        
+
+    INVOKE PrintRow         ;call the procedure to print the "line" variable at the bottom of the grid
+    call Crlf               ;bring cursor to next line
+    
+    dec position2           ;decrease y variable by one
+    inc position1           ;increase y variable by one
+
+    mov dh, position1       ;set the y position of the cursor
+    mov dl,0                ;set the x position of the cursor
+    call GotoXY             ;move the cursor
+
+loop L1                     ;loop L1 12 times
+
+    mov ecx, 12             ;reset ecx value to 12 for infinite loop purposes
+    mov position1, 0        ;reset value to 0 for infinite loop purposes
+    mov position2, 23       ;reset value to 23 for infinite loop purposes
+     
+jmp L1                      ;jump to the beginning of L1 for all eternity
+    
+    
+    mov dh,26               ;in case things fail miserably, set the y position of the cursor to beyond the grid
+    mov dl,0                ;set the x position of the cursor
+    call GotoXY             ;move the cursor
+
+   INVOKE SetColor, lightgray, black ; return to normal color to make the text legible if the program gets that far
+ 
+    exit                    
+
+main ENDP
+
+;-------------------------------------;
+          ;Generates a line;
+;-------------------------------------;
+GenerateLine PROC uses ecx
+    mov ebx, 0                  ;track beginning position of "line" array to assign color to
+    mov ecx, 12                 ;track end position of "line" array to assign color to
+
+ColorLoop:
+    mov  eax,16                 ;Keeps the range 0 - 16
+    call RandomRange            ;generate a random number between 0-16 
+    mov al, colors[eax]         ;move the color value in the colors array into the al register
+   
+    mov line[ecx+11], al        ;assign the color in al to the "line" array, starting at each end and working to the middle
+    mov line[ebx], al
+    inc ebx                     ;increase the ebx register value. The ecx will decrease automatically.
+  
+loop ColorLoop                  ;loop 12 times to assign 12 different colors, two fr each end of the line
+
+    mov ebx, 0                  ;reset
+    mov ecx, 0                  ;reset
+    mov al, 0                   ;reset
+    
+    ret
+
+GenerateLine ENDP
+
+;-------------------------------------------------------------------------------------------------------------;
+
+
+
+
+;-------------------------------------;
+          ;Prints a Row;
+;-------------------------------------;
+PrintRow PROC uses ecx
+
+mov ecx, 24
+ 
+L1:
+    INVOKE WriteColorChar, ' ', line[ecx-1], line[ecx-1]        ;call procedure to write the character, color foreground, and color background to half of square
+    INVOKE WriteColorChar, ' ', line[ecx-1], line[ecx-1]        ;call procedure to write the character, color foreground, and color background to half of square
+    loop L1                                                     ;loop 24 times, 12 for each side of symmetry
+
+    ret
+
+PrintRow ENDP
+
+;-------------------------------------------------------------------------------------------------------------;
+
+
+
+
+;-------------------------------------;
+     ;Calls the Colors to Screen;
+;-------------------------------------;
+WriteColorChar PROC USES eax, char:BYTE, forecolor:BYTE, backcolor:BYTE 
+    
+    INVOKE SetColor, forecolor, backcolor       ;send parameters to queue up SetTextColor
+
+    mov al, char                                ;queue up a space
+    call WriteChar                              ;write a space to screen
+
+    ret
+WriteColorChar ENDP
+
+;-------------------------------------------------------------------------------------------------------------;
+
+
+
+
+;-------------------------------------;
+     ;Writes the Colors to Screen;
+;-------------------------------------;
+SetColor PROC, forecolor:BYTE, backcolor:BYTE
+
+    movzx eax, backcolor                    ;set background color
+    shl eax, 4
+    or al, forecolor                        ;set foreground color
+    call SetTextColor       ; from Irvine32.lib, write color to display
+    ret
+     
+
+SetColor ENDP
+
+;-------------------------------------------------------------------------------------------------------------;
+
+END MAIN
